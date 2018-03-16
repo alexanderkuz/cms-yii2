@@ -10,7 +10,7 @@ return [
     'id' => 'api',
     'basePath' => dirname(__DIR__),
     'bootstrap' => ['log', 'api\components\Setup'],
-    'controllerNamespace' => 'frontend\controllers',
+    'controllerNamespace' => 'api\controllers',
     'components' => [
         'request' => [
            // 'csrfParam' => '_csrf-frontend',
@@ -45,13 +45,13 @@ return [
             'enableStrictParsing' => true,
             'showScriptName' => false,
             'rules' => [
-               /*[
+               [
                     'class' => 'yii\rest\UrlRule',
                     'controller' => ['v1/user'],
                     'extraPatterns' => [
                         'POST query' => 'query'
                     ]
-                ],*/
+                ],
                 ['class' => 'yii\rest\UrlRule', 'controller' => 'user'],
             ],
         ],

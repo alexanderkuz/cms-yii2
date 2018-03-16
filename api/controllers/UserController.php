@@ -14,5 +14,5 @@ class UserController extends ActiveController
 {
     public $modelClass = 'api\models\User';
 
-    
+
 }

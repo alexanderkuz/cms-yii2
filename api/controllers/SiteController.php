@@ -1,5 +1,5 @@
 <?php
-namespace frontend\controllers;
+namespace api\controllers;
 
 use Yii;
 use yii\base\InvalidParamException;
@@ -56,10 +56,10 @@ class SiteController extends Controller
                 'class' => 'light\swagger\SwaggerApiAction',
                 //The scan directories, you should use real path there.
                 'scanDir' => [
-                     Yii::getAlias('@aaa/modules/v1/swagger'),
+                     Yii::getAlias('@api/modules/v1/swagger'),
                     //  Yii::getAlias('@REST/controllers'),
-                     Yii::getAlias('@api/modules/v1/models'),
-                    Yii::getAlias('@api/modules/v1/controllers'),
+                     //Yii::getAlias('@api/modules/v1/models'),
+                    //Yii::getAlias('@api/controllers'),
                     //Yii::getAlias('@api/controllers'),
                 ],
                 //The security key
