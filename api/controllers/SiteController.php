@@ -46,6 +46,25 @@ class SiteController extends Controller
                     'logout' => ['post'],
                 ],
             ],
+//The document preview addesss:http://api.yourhost.com/site/doc
+            'doc' => [
+                'class' => 'light\swagger\SwaggerAction',
+                'restUrl' => \yii\helpers\Url::to(['/site/api'], true),
+            ],
+            //The resultUrl action.
+            'api' => [
+                'class' => 'light\swagger\SwaggerApiAction',
+                //The scan directories, you should use real path there.
+                'scanDir' => [
+                     Yii::getAlias('@aaa/modules/v1/swagger'),
+                    //  Yii::getAlias('@REST/controllers'),
+                     Yii::getAlias('@api/modules/v1/models'),
+                    Yii::getAlias('@api/modules/v1/controllers'),
+                    //Yii::getAlias('@api/controllers'),
+                ],
+                //The security key
+                'api_key' => 'test',
+            ],
         ];
     }
 
