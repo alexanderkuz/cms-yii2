@@ -52,6 +52,9 @@ return [
                         'POST query' => 'query'
                     ]
                 ],
+             //   'GET,HEAD /users/id/{id}' => 'user/vs',
+               // 'GET,HEAD /users' => 'user/indexs',
+
                 ['class' => 'yii\rest\UrlRule', 'controller' => 'user'],
             ],
         ],

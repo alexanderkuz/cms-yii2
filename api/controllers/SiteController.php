@@ -16,6 +16,14 @@ use frontend\models\ContactForm;
 /**
  * Site controller
  */
+/**
+ * @SWG\Swagger(
+ *     basePath="/",
+ *     produces={"application/json"},
+ *     consumes={"application/x-www-form-urlencoded"},
+ *     @SWG\Info(version="1.0", title="CMS API"),
+ * )
+ */
 class SiteController extends Controller
 {
     /**
@@ -73,13 +81,13 @@ class SiteController extends Controller
                 'class' => 'light\swagger\SwaggerApiAction',
                 //The scan directories, you should use real path there.
                 'scanDir' => [
-                    Yii::getAlias('@api/modules/v1/swagger'),
+                 //   Yii::getAlias('@api/modules/v1/swagger'),
                     //  Yii::getAlias('@REST/controllers'),
                    // Yii::getAlias('@api/modules/v1/models'),
                    // Yii::getAlias('@api/modules/v1/controllers'),
                    // Yii::getAlias('@api/controllers'),
-                    //Yii::getAlias('@api/models'),
-                    //Yii::getAlias('@api/controllers'),
+                    Yii::getAlias('@api/models'),
+                    Yii::getAlias('@api/controllers'),
                 ],
                 //The security key
                 'api_key' => 'test',

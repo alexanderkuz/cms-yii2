@@ -1,11 +1,13 @@
 <?php
+
 namespace common\models;
 
 use Yii;
 use yii\base\NotSupportedException;
-use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
+use yii\helpers\Html;
 use yii\web\IdentityInterface;
+use yii\helpers\ArrayHelper;
 
 /**
  * User model
@@ -17,47 +19,108 @@ use yii\web\IdentityInterface;
  * @property string $email
  * @property string $auth_key
  * @property integer $status
+ * @property integer $sex
  * @property integer $created_at
  * @property integer $updated_at
  * @property string $password write-only password
+  * @property string $assignedRules
+ * @property string $emailConfirmToken
+
+
  */
 class User extends ActiveRecord implements IdentityInterface
 {
-    const STATUS_DELETED = 0;
-    const STATUS_ACTIVE = 10;
+    const STATUS_NEW = 'NEW';
+    const STATUS_ACTIVE = 'ACTIVE';
+    const STATUS_BLOCKED = 'BLOCKED';
+    const STATUS_DELETE = 'DELETE';
 
+    const SEX_MALE = 'MALE';
+    const SEX_FEMALE = 'FEMALE';
+
+    public $password;
+
+    public function getDefaultPhoto()
+    {
+        return ($this->sex == self::SEX_MALE) ? 'male' : 'female';
+    }
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
     public static function tableName()
     {
         return '{{%user}}';
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function behaviors()
+    public static function getSexArray()
     {
         return [
-            TimestampBehavior::className(),
+            self::SEX_MALE   => Yii::t('users', 'SEX_MALE'),
+            self::SEX_FEMALE => Yii::t('users', 'SEX_FEMALE'),
+        ];
+    }
+
+    public static function getStatusArray()
+    {
+        return [
+            self::STATUS_NEW     => Yii::t('users', 'STATUS_NEW'),
+            self::STATUS_ACTIVE  => Yii::t('users', 'STATUS_ACTIVE'),
+            self::STATUS_BLOCKED => Yii::t('users', 'STATUS_BLOCKED'),
+            self::STATUS_DELETE  => Yii::t('users', 'STATUS_DELETE'),
+
         ];
     }
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
     public function rules()
     {
         return [
+            [['email'], 'required', 'except' => ['oauth']],
+            [['username'], 'required'],
+
+            [['username', 'email', 'auth_key', 'password_hash'], 'string', 'max' => 255],
+            [['status', 'sex'], 'string'],
+            [['created_at', 'updated_at'], 'safe'],
+            //[['phone'], 'string', 'max' => 255],
+            //[['first_name', 'last_name'], 'string', 'max' => 30],
+         //   ['referral', 'string', 'max' => 32],
             ['status', 'default', 'value' => self::STATUS_ACTIVE],
-            ['status', 'in', 'range' => [self::STATUS_ACTIVE, self::STATUS_DELETED]],
+            [
+                'status',
+                'in',
+                'range' => [self::STATUS_NEW, self::STATUS_ACTIVE, self::STATUS_BLOCKED, self::STATUS_DELETE]
+            ],
+            ['sex', 'in', 'range' => [self::SEX_MALE, self::SEX_FEMALE]],
+            [['password'], 'safe'],
+            
+//            ['password', 'string', 'min' => 6],
+        ];
+    }
+
+
+    /**
+     * @inheritdoc
+     */
+    public function attributeLabels()
+    {
+        return [
+            'id'            => 'ID',
+            'username'      => Yii::t('users', 'USERNAME'),
+            'email'         => Yii::t('users', 'EMAIL'),
+            'sex'           => Yii::t('users', 'SEX'),
+            'status'        => Yii::t('users', 'STATUS'),
+            'created_at'    => Yii::t('users', 'CREATED_AT'),
+            'updated_at'    => Yii::t('users', 'UPDATED_AT'),
+            'password_hash' => Yii::t('users', 'PASSWORD'),
+            'password'      => Yii::t('users', 'PASSWORD'),
         ];
     }
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
     public static function findIdentity($id)
     {
@@ -65,22 +128,37 @@ class User extends ActiveRecord implements IdentityInterface
     }
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
     public static function findIdentityByAccessToken($token, $type = null)
     {
-        throw new NotSupportedException('"findIdentityByAccessToken" is not implemented.');
+        //throw new NotSupportedException('findIdentityByAccessToken is not implemented.');
+
+        return static::findIdentity(2);
+    }
+
+    /**
+     * Finds user by username
+     *
+     * @param string $email
+     * @return mixed
+     */
+    public static function findByEmailOrUserName($email)
+    {
+        return static::find()->where(['and', 'status=:status', ['or', 'email=:email', 'username=:username']],
+            [':status' => self::STATUS_ACTIVE, ':email' => $email, ':username' => $email])->one();
     }
 
     /**
      * Finds user by username
      *
      * @param string $username
-     * @return static|null
+     * @return mixed
      */
-    public static function findByUsername($username)
+    public static function findByUserName($username)
     {
-        return static::findOne(['username' => $username, 'status' => self::STATUS_ACTIVE]);
+        return static::find()->where(['and', 'status=:status', 'username=:username'],
+            [':status' => self::STATUS_ACTIVE, ':username' => $username])->one();
     }
 
     /**
@@ -97,7 +175,7 @@ class User extends ActiveRecord implements IdentityInterface
 
         return static::findOne([
             'password_reset_token' => $token,
-            'status' => self::STATUS_ACTIVE,
+            'status'               => self::STATUS_ACTIVE,
         ]);
     }
 
@@ -105,21 +183,21 @@ class User extends ActiveRecord implements IdentityInterface
      * Finds out if password reset token is valid
      *
      * @param string $token password reset token
-     * @return bool
+     * @return boolean
      */
     public static function isPasswordResetTokenValid($token)
     {
         if (empty($token)) {
             return false;
         }
-
-        $timestamp = (int) substr($token, strrpos($token, '_') + 1);
         $expire = Yii::$app->params['user.passwordResetTokenExpire'];
+        $parts = explode('_', $token);
+        $timestamp = (int)end($parts);
         return $timestamp + $expire >= time();
     }
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
     public function getId()
     {
@@ -127,7 +205,7 @@ class User extends ActiveRecord implements IdentityInterface
     }
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
     public function getAuthKey()
     {
@@ -135,7 +213,7 @@ class User extends ActiveRecord implements IdentityInterface
     }
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
     public function validateAuthKey($authKey)
     {
@@ -146,11 +224,11 @@ class User extends ActiveRecord implements IdentityInterface
      * Validates password
      *
      * @param string $password password to validate
-     * @return bool if password provided is valid for current user
+     * @return boolean if password provided is valid for current user
      */
     public function validatePassword($password)
     {
-        return Yii::$app->security->validatePassword($password, $this->password_hash);
+        return ($this->password_hash != '' && Yii::$app->security->validatePassword($password, $this->password_hash));
     }
 
     /**
@@ -176,7 +254,7 @@ class User extends ActiveRecord implements IdentityInterface
      */
     public function generatePasswordResetToken()
     {
-        $this->password_reset_token = Yii::$app->security->generateRandomString() . '_' . time();
+        return Yii::$app->security->generateRandomString() . '_' . time();
     }
 
     /**
@@ -186,4 +264,77 @@ class User extends ActiveRecord implements IdentityInterface
     {
         $this->password_reset_token = null;
     }
+
+    public function getPasswordResetToken()
+    {
+        return $this->hasOne(UserPasswordResetToken::className(), ['user_id' => 'id']);
+    }
+
+    public function createEmailConfirmToken($needConfirmOldEmail = false)
+    {
+        $token = new UserEmailConfirmToken;
+        $token->user_id = $this->id;
+        $token->new_email = $this->email;
+        $token->new_email_token = Yii::$app->security->generateRandomString();
+        $token->new_email_confirm = 0;
+
+        if ($needConfirmOldEmail) {
+            $token->old_email_token = Yii::$app->security->generateRandomString();
+            $token->old_email_confirm = 0;
+            $token->old_email = $this->oldAttributes['email'];
+        }
+
+        return $token->save();
+    }
+
+    public function sendEmailConfirmationMail($view, $toAttribute, $r = null)
+    {
+        \Yii::$app->mailer->htmlLayout = "layouts/presale-html";
+        return \Yii::$app->mailer->compose(['html' => $view . '-html', 'text' => $view . '-text'],
+            ['user' => $this, 'token' => $this->emailConfirmToken, 'r' => $r])
+            ->setFrom(['info@usrv.io' => 'usrv.io robot'])
+            ->setTo($this->emailConfirmToken->{$toAttribute})
+            ->setSubject('Email confirmation for ' . \Yii::$app->name)
+            ->send();
+    }
+
+    public function getEmailConfirmToken()
+    {
+        return $this->hasOne(UserEmailConfirmToken::className(), ['user_id' => 'id']);
+    }
+
+    public function getOauthKeys()
+    {
+        return $this->hasMany(UserOauthKey::className(), 'user_id');
+    }
+
+    public function setEmail($email)
+    {
+        $this->email = $email;
+        if ($this->createEmailConfirmToken($this->email != '')) {
+            if ($this->sendEmailConfirmationMail('confirmNewEmail', 'new_email')) {
+                if ($this->sendEmailConfirmationMail('confirmChangeEmail', 'old_email')) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public function getAssignments()
+    {
+        return $this->hasMany(AuthAssignment::className(), ['user_id' => 'id']);
+    }
+
+    public function getAssignedRules()
+    {
+        return $this->hasMany(AuthItem::className(), ['name' => 'item_name'])->via('assignments');
+    }
+
+    public function getNotAssignedRules()
+    {
+        return AuthItem::find()->where(['not in', 'name', ArrayHelper::getColumn($this->assignedRules, 'name')])->all();
+    }
+
+
 }
