@@ -12,6 +12,7 @@ use frontend\models\PasswordResetRequestForm;
 use frontend\models\ResetPasswordForm;
 use frontend\models\SignupForm;
 use frontend\models\ContactForm;
+use common\models\User;
 
 /**
  * Site controller
@@ -72,7 +73,40 @@ class SiteController extends Controller
      */
     public function actionIndex()
     {
-        return $this->render('index');
+
+
+        try {
+            $transaction = Yii::$app->db->beginTransaction();
+
+           /* $User=new User();
+
+            $User->status='ACTIVE';
+            $User->sex='MALE';
+            $User->email='moderator10@example.com';
+            $User->auth_key='9cTiRVitbR-cMdCmvQKZGwU-2Jb';
+            $User->password_hash='$2y$13$agNgy1OSs/6QM8hvmh2gD.nSprCQRtEH.urvDU/RK3/ohvUXp1jpS';
+            $User->username='moderator9';
+            $User->save();
+*/
+            $User=User::find()->where(['id'=>10])->one();
+            $User->username='moderator22';
+            $User->save();
+
+            $transaction->commit();
+
+        } catch (Exception $e) {
+            $transaction->rollBack();
+
+        }
+
+
+            //moderator3
+
+        return $this->render('index',
+            [
+                'User'=>$User
+            ]
+        );
     }
 
     /**
